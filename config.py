@@ -4,10 +4,10 @@ Configuration file for Options Trading Platform
 import os
 
 # API Configuration
-ALPHA_VANTAGE_API_KEY = 'MZYTV93Z0A0ZMWF0'
+ALPHA_VANTAGE_API_KEY = ''
 
 # Email Configuration
-EMAIL_RECIPIENT = 'reda.salhi@centrale-med.fr'
+EMAIL_RECIPIENT = ''
 SMTP_SERVER = 'smtp.gmail.com'
 SMTP_PORT = 587
 
