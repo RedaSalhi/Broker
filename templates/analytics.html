@@ -1,0 +1,335 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics - Options Trading Platform{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2>P&L Analytics & Risk Dashboard</h2>
+        <hr>
+    </div>
+</div>
+
+<!-- Performance Metrics -->
+<div class="row">
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="metric-label">Win Rate</div>
+            <div class="metric-value" id="winRate">0%</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="metric-label">Profit Factor</div>
+            <div class="metric-value" id="profitFactor">0</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="metric-label">Total Trades</div>
+            <div class="metric-value" id="totalTrades">0</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="metric-label">Sharpe Ratio</div>
+            <div class="metric-value" id="sharpeRatio">0</div>
+        </div>
+    </div>
+</div>
+
+<!-- P&L Chart -->
+<div class="row mt-4">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Portfolio P&L History</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="pnlChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Greeks Chart -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Portfolio Greeks</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="greeksChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Performance Breakdown -->
+<div class="row mt-4">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Performance Breakdown</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tr>
+                        <td>Total Profit:</td>
+                        <td id="totalProfit" class="text-end fw-bold text-success">$0</td>
+                    </tr>
+                    <tr>
+                        <td>Total Loss:</td>
+                        <td id="totalLoss" class="text-end fw-bold text-danger">$0</td>
+                    </tr>
+                    <tr>
+                        <td>Net P&L:</td>
+                        <td id="netPnL" class="text-end fw-bold">$0</td>
+                    </tr>
+                    <tr>
+                        <td>Winning Trades:</td>
+                        <td id="winningTrades" class="text-end">0</td>
+                    </tr>
+                    <tr>
+                        <td>Losing Trades:</td>
+                        <td id="losingTrades" class="text-end">0</td>
+                    </tr>
+                    <tr>
+                        <td>Avg Win:</td>
+                        <td id="avgWin" class="text-end">$0</td>
+                    </tr>
+                    <tr>
+                        <td>Avg Loss:</td>
+                        <td id="avgLoss" class="text-end">$0</td>
+                    </tr>
+                    <tr>
+                        <td>Premium Collected:</td>
+                        <td id="premiumCollected" class="text-end">$0</td>
+                    </tr>
+                    <tr>
+                        <td>Premium Paid:</td>
+                        <td id="premiumPaid" class="text-end">$0</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delta Exposure -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Delta Exposure & Hedging</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tr>
+                        <td>Portfolio Delta:</td>
+                        <td id="portfolioDelta" class="text-end fw-bold">0</td>
+                    </tr>
+                    <tr>
+                        <td>Total Hedge Value:</td>
+                        <td id="hedgeValue" class="text-end">$0</td>
+                    </tr>
+                    <tr>
+                        <td>Positions Needing Rehedge:</td>
+                        <td id="rehedgeCount" class="text-end">0</td>
+                    </tr>
+                </table>
+
+                <h6 class="mt-4">Portfolio Greeks</h6>
+                <table class="table table-sm">
+                    <tr>
+                        <td>Delta:</td>
+                        <td id="pgDelta" class="text-end">0</td>
+                    </tr>
+                    <tr>
+                        <td>Gamma:</td>
+                        <td id="pgGamma" class="text-end">0</td>
+                    </tr>
+                    <tr>
+                        <td>Vega:</td>
+                        <td id="pgVega" class="text-end">0</td>
+                    </tr>
+                    <tr>
+                        <td>Theta:</td>
+                        <td id="pgTheta" class="text-end">0</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let pnlChart = null;
+let greeksChart = null;
+
+$(document).ready(function() {
+    loadAnalytics();
+    loadPnLHistory();
+    loadPortfolioGreeks();
+    loadDeltaExposure();
+
+    async function loadAnalytics() {
+        try {
+            const result = await apiRequest('/api/performance-metrics');
+            const metrics = result.metrics;
+
+            $('#winRate').text(formatNumber(metrics.win_rate, 1) + '%');
+            $('#profitFactor').text(formatNumber(metrics.profit_factor, 2));
+            $('#totalTrades').text(metrics.total_trades);
+            $('#sharpeRatio').text(formatNumber(metrics.sharpe_ratio, 2));
+
+            $('#totalProfit').text(formatCurrency(metrics.total_profit));
+            $('#totalLoss').text(formatCurrency(metrics.total_loss));
+            $('#netPnL').text(formatCurrency(metrics.net_pnl))
+                .toggleClass('text-success', metrics.net_pnl >= 0)
+                .toggleClass('text-danger', metrics.net_pnl < 0);
+
+            $('#winningTrades').text(metrics.winning_trades);
+            $('#losingTrades').text(metrics.losing_trades);
+            $('#avgWin').text(formatCurrency(metrics.avg_win));
+            $('#avgLoss').text(formatCurrency(metrics.avg_loss));
+            $('#premiumCollected').text(formatCurrency(metrics.total_premium_collected));
+            $('#premiumPaid').text(formatCurrency(metrics.total_premium_paid));
+
+        } catch (error) {
+            console.error('Error loading analytics:', error);
+        }
+    }
+
+    async function loadPnLHistory() {
+        try {
+            const result = await apiRequest('/api/pnl-history?days=30');
+            const history = result.history;
+
+            if (history.length === 0) return;
+
+            const labels = history.map(h => h.date || h.snapshot_date);
+            const pnlData = history.map(h => h.total_pnl);
+
+            const ctx = document.getElementById('pnlChart').getContext('2d');
+
+            if (pnlChart) {
+                pnlChart.destroy();
+            }
+
+            pnlChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Total P&L',
+                        data: pnlData,
+                        borderColor: '#2c3e50',
+                        backgroundColor: 'rgba(44, 62, 80, 0.1)',
+                        tension: 0.1,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: true
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toFixed(0);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+        } catch (error) {
+            console.error('Error loading P&L history:', error);
+        }
+    }
+
+    async function loadPortfolioGreeks() {
+        try {
+            const result = await apiRequest('/api/portfolio-greeks');
+            const greeks = result.greeks.portfolio;
+
+            $('#pgDelta').text(formatNumber(greeks.delta, 2));
+            $('#pgGamma').text(formatNumber(greeks.gamma, 4));
+            $('#pgVega').text(formatNumber(greeks.vega, 2));
+            $('#pgTheta').text(formatNumber(greeks.theta, 2));
+
+            // Create Greeks chart
+            const ctx = document.getElementById('greeksChart').getContext('2d');
+
+            if (greeksChart) {
+                greeksChart.destroy();
+            }
+
+            greeksChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Delta', 'Gamma', 'Vega', 'Theta'],
+                    datasets: [{
+                        label: 'Greeks',
+                        data: [
+                            Math.abs(greeks.delta),
+                            Math.abs(greeks.gamma) * 1000,
+                            Math.abs(greeks.vega),
+                            Math.abs(greeks.theta)
+                        ],
+                        backgroundColor: [
+                            'rgba(52, 152, 219, 0.7)',
+                            'rgba(46, 204, 113, 0.7)',
+                            'rgba(155, 89, 182, 0.7)',
+                            'rgba(231, 76, 60, 0.7)'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+
+        } catch (error) {
+            console.error('Error loading Greeks:', error);
+        }
+    }
+
+    async function loadDeltaExposure() {
+        try {
+            const result = await apiRequest('/api/delta-exposure');
+            const exposure = result.exposure;
+
+            $('#portfolioDelta').text(formatNumber(exposure.total_portfolio_delta, 0));
+            $('#hedgeValue').text(formatCurrency(exposure.total_hedge_value));
+            $('#rehedgeCount').text(exposure.positions_needing_rehedge);
+
+        } catch (error) {
+            console.error('Error loading delta exposure:', error);
+        }
+    }
+
+    // Refresh every 60 seconds
+    setInterval(function() {
+        loadAnalytics();
+        loadPnLHistory();
+        loadPortfolioGreeks();
+        loadDeltaExposure();
+    }, 60000);
+});
+</script>
+{% endblock %}

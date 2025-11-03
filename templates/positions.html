@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}Positions - Options Trading Platform{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2>Positions Management</h2>
+        <hr>
+    </div>
+</div>
+
+<!-- Portfolio Summary -->
+<div class="row">
+    <div class="col-md-4">
+        <div class="card metric-card">
+            <div class="metric-label">Total P&L</div>
+            <div class="metric-value" id="totalPnL">$0.00</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card metric-card">
+            <div class="metric-label">Open Positions</div>
+            <div class="metric-value" id="openCount">0</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card metric-card">
+            <div class="metric-label">Closed Positions</div>
+            <div class="metric-value" id="closedCount">0</div>
+        </div>
+    </div>
+</div>
+
+<!-- Positions Table -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">All Positions</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="positionsTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Symbol</th>
+                                <th>Type</th>
+                                <th>Strike</th>
+                                <th>Expiration</th>
+                                <th>Qty</th>
+                                <th>Entry Price</th>
+                                <th>Current Price</th>
+                                <th>Option Price</th>
+                                <th>P&L</th>
+                                <th>Delta</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="positionsBody">
+                            <tr>
+                                <td colspan="12" class="text-center">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Position Detail Modal -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Position Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detailContent">
+                <div class="text-center">
+                    <div class="spinner-border"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    loadPositions();
+
+    async function loadPositions() {
+        try {
+            const result = await apiRequest('/api/positions');
+            const summary = result.summary;
+
+            $('#totalPnL').text(formatCurrency(summary.total_pnl))
+                .toggleClass('positive', summary.total_pnl >= 0)
+                .toggleClass('negative', summary.total_pnl < 0);
+
+            $('#openCount').text(summary.open_positions);
+            $('#closedCount').text(summary.closed_positions);
+
+            if (summary.positions.length === 0) {
+                $('#positionsBody').html('<tr><td colspan="12" class="text-center">No positions</td></tr>');
+                return;
+            }
+
+            let html = '';
+            summary.positions.forEach(pos => {
+                const pnlClass = pos.pnl >= 0 ? 'text-success' : 'text-danger';
+                const typeClass = pos.quantity < 0 ? 'badge-short' : 'badge-long';
+                const typeLabel = pos.quantity < 0 ? 'SHORT' : 'LONG';
+
+                html += `
+                    <tr>
+                        <td>${pos.id}</td>
+                        <td><strong>${pos.symbol}</strong></td>
+                        <td><span class="badge ${typeClass}">${typeLabel}</span> ${pos.type.toUpperCase()}</td>
+                        <td>${formatCurrency(pos.strike)}</td>
+                        <td>${pos.expiration}<br><small>${pos.days_to_expiry} days</small></td>
+                        <td>${pos.quantity}</td>
+                        <td>${formatCurrency(pos.current_price)}</td>
+                        <td>${formatCurrency(pos.current_price)}</td>
+                        <td>${formatCurrency(pos.option_price)}</td>
+                        <td class="${pnlClass} fw-bold">${formatCurrency(pos.pnl)}</td>
+                        <td>-</td>
+                        <td>
+                            <button class="btn btn-sm btn-info" onclick="viewDetails(${pos.id})">Details</button>
+                            <button class="btn btn-sm btn-warning" onclick="hedgePosition(${pos.id})">Hedge</button>
+                            <button class="btn btn-sm btn-danger" onclick="closePosition(${pos.id})">Close</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            $('#positionsBody').html(html);
+        } catch (error) {
+            showAlert('Error loading positions: ' + error.message, 'danger');
+        }
+    }
+
+    window.viewDetails = async function(positionId) {
+        try {
+            $('#detailContent').html('<div class="text-center"><div class="spinner-border"></div></div>');
+            new bootstrap.Modal($('#detailModal')).show();
+
+            const result = await apiRequest(`/api/position/${positionId}`);
+            const pos = result.position;
+            const pnl = result.pnl;
+
+            const html = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Position Information</h6>
+                        <table class="table table-sm">
+                            <tr><td>Symbol:</td><td class="fw-bold">${pos.symbol}</td></tr>
+                            <tr><td>Type:</td><td>${pos.option_type.toUpperCase()}</td></tr>
+                            <tr><td>Strike:</td><td>${formatCurrency(pos.strike)}</td></tr>
+                            <tr><td>Expiration:</td><td>${pos.expiration}</td></tr>
+                            <tr><td>Quantity:</td><td>${pos.quantity}</td></tr>
+                            <tr><td>Status:</td><td>${pos.status.toUpperCase()}</td></tr>
+                            <tr><td>Entry Date:</td><td>${new Date(pos.entry_date).toLocaleDateString()}</td></tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>P&L Breakdown</h6>
+                        <table class="table table-sm">
+                            <tr><td>Option P&L:</td><td class="fw-bold">${formatCurrency(pnl.option_pnl)}</td></tr>
+                            <tr><td>Hedge P&L:</td><td>${formatCurrency(pnl.net_hedge_pnl)}</td></tr>
+                            <tr><td>Total P&L:</td><td class="fw-bold ${pnl.total_pnl >= 0 ? 'text-success' : 'text-danger'}">${formatCurrency(pnl.total_pnl)}</td></tr>
+                            <tr><td>ROI:</td><td class="fw-bold">${formatPercent(pnl.roi)}</td></tr>
+                            <tr><td>Days Held:</td><td>${pnl.days_held}</td></tr>
+                        </table>
+                    </div>
+                </div>
+                <hr>
+                <div class="row">
+                    <div class="col-12">
+                        <h6>Greeks</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td>Delta: ${formatNumber(pnl.greeks.delta, 4)}</td>
+                                <td>Gamma: ${formatNumber(pnl.greeks.gamma, 4)}</td>
+                                <td>Vega: ${formatNumber(pnl.greeks.vega, 4)}</td>
+                                <td>Theta: ${formatNumber(pnl.greeks.theta, 4)}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            `;
+
+            $('#detailContent').html(html);
+        } catch (error) {
+            $('#detailContent').html(`<div class="alert alert-danger">${error.message}</div>`);
+        }
+    };
+
+    window.hedgePosition = async function(positionId) {
+        if (!confirm('Execute delta hedge for this position?')) return;
+
+        try {
+            const result = await apiRequest('/api/execute-hedge', 'POST', {
+                position_id: positionId
+            });
+
+            showAlert('Hedge executed successfully!', 'success');
+            loadPositions();
+        } catch (error) {
+            showAlert('Error executing hedge: ' + error.message, 'danger');
+        }
+    };
+
+    window.closePosition = async function(positionId) {
+        if (!confirm('Close this position?')) return;
+
+        try {
+            const result = await apiRequest('/api/close-position', 'POST', {
+                position_id: positionId
+            });
+
+            showAlert(`Position closed. Final P&L: ${formatCurrency(result.final_pnl.total_pnl)}`, 'success');
+            loadPositions();
+        } catch (error) {
+            showAlert('Error closing position: ' + error.message, 'danger');
+        }
+    };
+});
+</script>
+{% endblock %}

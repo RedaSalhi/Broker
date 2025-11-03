@@ -1,0 +1,486 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Options Trading Platform{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2>Trading Dashboard</h2>
+        <hr>
+    </div>
+</div>
+
+<!-- Portfolio Metrics -->
+<div class="row">
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="metric-label">Total P&L</div>
+            <div class="metric-value" id="totalPnL">$0.00</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="metric-label">Open Positions</div>
+            <div class="metric-value" id="openPositions">0</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="metric-label">Portfolio Delta</div>
+            <div class="metric-value" id="portfolioDelta">0</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="metric-label">Delta Exposure</div>
+            <div class="metric-value" id="deltaExposure">$0</div>
+        </div>
+    </div>
+</div>
+
+<!-- Option Pricing Calculator -->
+<div class="row mt-4">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Option Pricing Calculator</h5>
+            </div>
+            <div class="card-body">
+                <form id="pricingForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label>Symbol</label>
+                            <input type="text" class="form-control" id="symbol" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label>Strike Price</label>
+                            <input type="number" class="form-control" id="strike" step="0.01" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label>Days to Expiry</label>
+                            <input type="number" class="form-control" id="daysToExpiry" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label>Option Type</label>
+                            <select class="form-select" id="optionType">
+                                <option value="call">Call</option>
+                                <option value="put">Put</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label>Implied Volatility (%)</label>
+                            <input type="number" class="form-control" id="impliedVol" step="0.01" placeholder="Auto">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label>Number of Contracts</label>
+                            <input type="number" class="form-control" id="numContracts" value="1" min="1" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Calculate Price</button>
+                </form>
+
+                <div class="loading mt-3">
+                    <div class="spinner-border" role="status"></div>
+                </div>
+
+                <div id="pricingResults" class="mt-4" style="display: none;">
+                    <h6>Results</h6>
+                    <table class="table table-sm">
+                        <tr>
+                            <td>Current Stock Price:</td>
+                            <td id="currentPrice" class="text-end fw-bold"></td>
+                        </tr>
+                        <tr>
+                            <td>Option Price:</td>
+                            <td id="optionPrice" class="text-end fw-bold text-primary"></td>
+                        </tr>
+                        <tr>
+                            <td>Total Premium:</td>
+                            <td id="totalPremium" class="text-end fw-bold text-success"></td>
+                        </tr>
+                        <tr>
+                            <td colspan="2"><hr></td>
+                        </tr>
+                        <tr>
+                            <td>Delta:</td>
+                            <td id="delta" class="text-end"></td>
+                        </tr>
+                        <tr>
+                            <td>Gamma:</td>
+                            <td id="gamma" class="text-end"></td>
+                        </tr>
+                        <tr>
+                            <td>Vega:</td>
+                            <td id="vega" class="text-end"></td>
+                        </tr>
+                        <tr>
+                            <td>Theta:</td>
+                            <td id="theta" class="text-end"></td>
+                        </tr>
+                        <tr>
+                            <td colspan="2"><hr></td>
+                        </tr>
+                        <tr>
+                            <td>Hedge Shares Required:</td>
+                            <td id="hedgeShares" class="text-end fw-bold"></td>
+                        </tr>
+                        <tr>
+                            <td>Hedge Value:</td>
+                            <td id="hedgeValue" class="text-end fw-bold"></td>
+                        </tr>
+                    </table>
+
+                    <button class="btn btn-success w-100 mt-2" id="sellOptionBtn">Sell This Option</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Market Data -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Market Data</h5>
+            </div>
+            <div class="card-body">
+                <form id="marketDataForm" class="mb-3">
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="marketSymbol" placeholder="Enter symbol...">
+                        <button class="btn btn-primary" type="submit">Get Data</button>
+                    </div>
+                </form>
+
+                <div id="marketDataResults" style="display: none;">
+                    <table class="table table-sm">
+                        <tr>
+                            <td>Symbol:</td>
+                            <td id="mdSymbol" class="text-end fw-bold"></td>
+                        </tr>
+                        <tr>
+                            <td>Price:</td>
+                            <td id="mdPrice" class="text-end fw-bold"></td>
+                        </tr>
+                        <tr>
+                            <td>Volume:</td>
+                            <td id="mdVolume" class="text-end"></td>
+                        </tr>
+                        <tr>
+                            <td>Historical Volatility:</td>
+                            <td id="mdVolatility" class="text-end"></td>
+                        </tr>
+                    </table>
+                </div>
+
+                <hr>
+
+                <h6>Portfolio Greeks</h6>
+                <div id="portfolioGreeks">
+                    <table class="table table-sm">
+                        <tr>
+                            <td>Delta:</td>
+                            <td id="pgDelta" class="text-end fw-bold">-</td>
+                        </tr>
+                        <tr>
+                            <td>Gamma:</td>
+                            <td id="pgGamma" class="text-end">-</td>
+                        </tr>
+                        <tr>
+                            <td>Vega:</td>
+                            <td id="pgVega" class="text-end">-</td>
+                        </tr>
+                        <tr>
+                            <td>Theta:</td>
+                            <td id="pgTheta" class="text-end">-</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <button class="btn btn-warning w-100" id="autoRehedgeBtn">Auto Rehedge Portfolio</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Positions -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Recent Positions</h5>
+                <button class="btn btn-sm btn-light" id="refreshBtn">Refresh</button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Symbol</th>
+                                <th>Type</th>
+                                <th>Strike</th>
+                                <th>Expiration</th>
+                                <th>Qty</th>
+                                <th>Current Price</th>
+                                <th>Value</th>
+                                <th>P&L</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="positionsTable">
+                            <tr>
+                                <td colspan="10" class="text-center">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sell Option Modal -->
+<div class="modal fade" id="sellModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Sell Option</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="sellForm">
+                    <input type="hidden" id="sellSymbol">
+                    <input type="hidden" id="sellStrike">
+                    <input type="hidden" id="sellOptionType">
+                    <input type="hidden" id="sellImpliedVol">
+
+                    <div class="mb-3">
+                        <label>Expiration Date</label>
+                        <input type="date" class="form-control" id="sellExpiration" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Quantity (negative for short)</label>
+                        <input type="number" class="form-control" id="sellQuantity" value="-1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Premium (per contract)</label>
+                        <input type="number" class="form-control" id="sellPremium" step="0.01" required>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">Execute Sale</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Load initial data
+    loadPortfolioMetrics();
+    loadPositions();
+    loadPortfolioGreeks();
+
+    // Pricing calculator
+    $('#pricingForm').submit(async function(e) {
+        e.preventDefault();
+
+        const data = {
+            symbol: $('#symbol').val().toUpperCase(),
+            strike: parseFloat($('#strike').val()),
+            days_to_expiry: parseInt($('#daysToExpiry').val()),
+            option_type: $('#optionType').val(),
+            implied_vol: $('#impliedVol').val() ? parseFloat($('#impliedVol').val()) / 100 : null,
+            num_contracts: parseInt($('#numContracts').val())
+        };
+
+        showLoading();
+
+        try {
+            const result = await apiRequest('/api/price-option', 'POST', data);
+
+            $('#currentPrice').text(formatCurrency(result.current_price));
+            $('#optionPrice').text(formatCurrency(result.option_price));
+            $('#totalPremium').text(formatCurrency(result.total_premium));
+            $('#delta').text(formatNumber(result.greeks.delta, 4));
+            $('#gamma').text(formatNumber(result.greeks.gamma, 4));
+            $('#vega').text(formatNumber(result.greeks.vega, 4));
+            $('#theta').text(formatNumber(result.greeks.theta, 4));
+            $('#hedgeShares').text(formatNumber(result.hedge_shares, 0));
+            $('#hedgeValue').text(formatCurrency(result.hedge_value));
+
+            $('#pricingResults').show();
+        } catch (error) {
+            showAlert('Error calculating price: ' + error.message, 'danger');
+        } finally {
+            hideLoading();
+        }
+    });
+
+    // Sell option button
+    $('#sellOptionBtn').click(function() {
+        $('#sellSymbol').val($('#symbol').val().toUpperCase());
+        $('#sellStrike').val($('#strike').val());
+        $('#sellOptionType').val($('#optionType').val());
+        $('#sellImpliedVol').val($('#impliedVol').val() || '');
+        $('#sellPremium').val($('#optionPrice').text().replace('$', ''));
+
+        new bootstrap.Modal($('#sellModal')).show();
+    });
+
+    // Sell form
+    $('#sellForm').submit(async function(e) {
+        e.preventDefault();
+
+        const data = {
+            symbol: $('#sellSymbol').val(),
+            option_type: $('#sellOptionType').val(),
+            strike: parseFloat($('#sellStrike').val()),
+            expiration: $('#sellExpiration').val(),
+            quantity: parseInt($('#sellQuantity').val()),
+            premium: parseFloat($('#sellPremium').val()),
+            implied_vol: $('#sellImpliedVol').val() ? parseFloat($('#sellImpliedVol').val()) / 100 : null
+        };
+
+        try {
+            const result = await apiRequest('/api/sell-option', 'POST', data);
+            showAlert('Option sold successfully! Position ID: ' + result.position_id, 'success');
+            bootstrap.Modal.getInstance($('#sellModal')).hide();
+            loadPositions();
+            loadPortfolioMetrics();
+        } catch (error) {
+            showAlert('Error selling option: ' + error.message, 'danger');
+        }
+    });
+
+    // Market data
+    $('#marketDataForm').submit(async function(e) {
+        e.preventDefault();
+
+        const symbol = $('#marketSymbol').val().toUpperCase();
+
+        try {
+            const result = await apiRequest(`/api/market-data/${symbol}`);
+
+            $('#mdSymbol').text(result.data.symbol);
+            $('#mdPrice').text(formatCurrency(result.data.price));
+            $('#mdVolume').text(result.data.volume.toLocaleString());
+            $('#mdVolatility').text((result.data.historical_volatility * 100).toFixed(2) + '%');
+
+            $('#marketDataResults').show();
+        } catch (error) {
+            showAlert('Error fetching market data: ' + error.message, 'danger');
+        }
+    });
+
+    // Auto rehedge
+    $('#autoRehedgeBtn').click(async function() {
+        if (!confirm('Execute automatic rehedging for all positions?')) return;
+
+        try {
+            const result = await apiRequest('/api/auto-rehedge', 'POST', { execute: true });
+            showAlert(`Rehedged ${result.result.total_executed} positions. Total cost: ${formatCurrency(result.result.total_cost)}`, 'success');
+            loadPortfolioMetrics();
+        } catch (error) {
+            showAlert('Error rehedging: ' + error.message, 'danger');
+        }
+    });
+
+    // Refresh button
+    $('#refreshBtn').click(function() {
+        loadPositions();
+        loadPortfolioMetrics();
+        loadPortfolioGreeks();
+    });
+
+    // Load functions
+    async function loadPortfolioMetrics() {
+        try {
+            const result = await apiRequest('/api/portfolio-pnl');
+            const pnl = result.pnl;
+
+            $('#totalPnL').text(formatCurrency(pnl.total_pnl))
+                .toggleClass('positive', pnl.total_pnl >= 0)
+                .toggleClass('negative', pnl.total_pnl < 0);
+
+            $('#openPositions').text(pnl.open_positions_count);
+
+            const deltaResult = await apiRequest('/api/delta-exposure');
+            $('#portfolioDelta').text(formatNumber(deltaResult.exposure.total_portfolio_delta, 0));
+            $('#deltaExposure').text(formatCurrency(deltaResult.exposure.total_hedge_value));
+        } catch (error) {
+            console.error('Error loading metrics:', error);
+        }
+    }
+
+    async function loadPositions() {
+        try {
+            const result = await apiRequest('/api/positions');
+            const positions = result.summary.positions;
+
+            if (positions.length === 0) {
+                $('#positionsTable').html('<tr><td colspan="10" class="text-center">No positions</td></tr>');
+                return;
+            }
+
+            let html = '';
+            positions.forEach(pos => {
+                const pnlClass = pos.pnl >= 0 ? 'text-success' : 'text-danger';
+                const typeClass = pos.quantity < 0 ? 'badge-short' : 'badge-long';
+                const typeLabel = pos.quantity < 0 ? 'SHORT' : 'LONG';
+
+                html += `
+                    <tr>
+                        <td>${pos.id}</td>
+                        <td><strong>${pos.symbol}</strong></td>
+                        <td><span class="badge ${typeClass}">${typeLabel}</span> ${pos.type.toUpperCase()}</td>
+                        <td>${formatCurrency(pos.strike)}</td>
+                        <td>${pos.expiration} (${pos.days_to_expiry}d)</td>
+                        <td>${pos.quantity}</td>
+                        <td>${formatCurrency(pos.option_price)}</td>
+                        <td>${formatCurrency(pos.value)}</td>
+                        <td class="${pnlClass}">${formatCurrency(pos.pnl)}</td>
+                        <td>
+                            <button class="btn btn-sm btn-primary" onclick="viewPosition(${pos.id})">View</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            $('#positionsTable').html(html);
+        } catch (error) {
+            console.error('Error loading positions:', error);
+        }
+    }
+
+    async function loadPortfolioGreeks() {
+        try {
+            const result = await apiRequest('/api/portfolio-greeks');
+            const greeks = result.greeks.portfolio;
+
+            $('#pgDelta').text(formatNumber(greeks.delta, 2));
+            $('#pgGamma').text(formatNumber(greeks.gamma, 4));
+            $('#pgVega').text(formatNumber(greeks.vega, 2));
+            $('#pgTheta').text(formatNumber(greeks.theta, 2));
+        } catch (error) {
+            console.error('Error loading Greeks:', error);
+        }
+    }
+
+    // Auto-refresh every 30 seconds
+    setInterval(function() {
+        loadPortfolioMetrics();
+        loadPortfolioGreeks();
+    }, 30000);
+});
+
+function viewPosition(id) {
+    window.location.href = `/positions#pos-${id}`;
+}
+</script>
+{% endblock %}
