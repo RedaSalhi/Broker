@@ -290,7 +290,7 @@ P&L = Current Option Value - Premium Paid
 - **Data:** Stock prices, options chains, historical volatility
 
 ### Fallback: Alpha Vantage
-- **API Key:** MZYTV93Z0A0ZMWF0
+- **API Key:** 
 - **Rate Limit:** 5 requests per minute (free tier)
 - **Data:** Stock quotes, intraday data
 
