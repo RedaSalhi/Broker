@@ -59,7 +59,7 @@ options_platform/
 
 1. **Clone or navigate to the project directory**
    ```bash
-   cd /Users/redasalhi/Coding/Websites/Broker
+   cd PATH
    ```
 
 2. **Create a virtual environment**
@@ -74,8 +74,7 @@ options_platform/
    ```
 
 4. **Configure API keys** (already set in config.py)
-   - Alpha Vantage API Key: `MZYTV93Z0A0ZMWF0`
-   - Email for alerts: `reda.salhi@centrale-med.fr`
+   - Alpha Vantage API Key: ``
 
 5. **Initialize the database**
    ```bash
