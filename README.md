@@ -347,10 +347,6 @@ Potential improvements:
 7. Implement rate limiting
 8. Add input validation and sanitization
 
-## Support & Contact
-
-- **Email:** reda.salhi@centrale-med.fr
-- **Issues:** Create an issue in the project repository
 
 ## License
 
